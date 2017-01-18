@@ -179,6 +179,9 @@
   		skip = 1;
   	}
   	var memo = accumulator;
+    if (typeof collection !== "array"){
+      collection = Object.values(collection);
+    }
 
   	for (var i = skip; i < collection.length; i++){
   		memo = iterator(memo, collection[i], i, collection);
@@ -201,14 +204,20 @@
 
 
   // Determine whether all of the elements match a truth test.
-  _.every = function(collection, iterator) {
+  _.every = function(collection, test) {
     // TIP: Try re-using reduce() here.
+    return _.reduce(collection, function(allFound, item) {
+      return typeof test === "function" ? !!(test(item) && allFound) : (item === true && allFound);
+    }, true);
   };
 
   // Determine whether any of the elements pass a truth test. If no iterator is
   // provided, provide a default one
-  _.some = function(collection, iterator) {
+  _.some = function(collection, test) {
     // TIP: There's a very clever way to re-use every() here.
+    return !(_.every(collection, function(item){
+    	return typeof test === "function" ? !!(!test(item)) : !(item === true);
+    }));
   };
 
 
@@ -231,11 +240,39 @@
   //     bla: "even more stuff"
   //   }); // obj1 now contains key1, key2, key3 and bla
   _.extend = function(obj) {
+  	var len = arguments.length;
+
+  	if (len <= 1) {return obj;}
+
+  	for (var idx = 1; idx < len; idx++){
+  		var input = arguments[idx];
+ 		var keys = Object.keys(input);
+
+  		for (var i = 0; i < keys.length; i++){
+  			obj[keys[i]] = input[keys[i]];
+  		}
+  	} 
+
+  	return obj;
   };
 
   // Like extend, but doesn't ever overwrite a key that already
   // exists in obj
   _.defaults = function(obj) {
+  	var len = arguments.length;
+
+  	if (len <= 1) {return obj;}
+
+  	for (var idx = 1; idx < len; idx++){
+  		var input = arguments[idx];
+ 		var keys = Object.keys(input);
+
+  		for (var i = 0; i < keys.length; i++){
+  			if(obj[keys[i]] === undefined) {obj[keys[i]] = input[keys[i]]};
+  		}
+  	} 
+
+  	return obj;
   };
 
 
@@ -261,7 +298,7 @@
     return function() {
       if (!alreadyCalled) {
         // TIP: .apply(this, arguments) is the standard way to pass on all of the
-        // infromation from one function call to another.
+        // information from one function call to another.
         result = func.apply(this, arguments);
         alreadyCalled = true;
       }
@@ -279,6 +316,18 @@
   // already computed the result for the given argument and return that value
   // instead if possible.
   _.memoize = function(func) {
+  	var memo = function(){
+  	  var argList = memo.argList;
+  	  var key = Array.prototype.slice.call(arguments).join(', '); 
+  	  //Could sort arguments array to double efficiency, if function answer is independent 
+  	  //of variable placement as in memoAdd... but generally not a good assumption.
+  	  if(argList[key] === undefined) {
+  		argList[key] = func.apply(this, arguments);
+  	  }
+  	  return argList[key];
+  	}
+  	memo.argList = {};
+  	return memo;
   };
 
   // Delays a function for the given number of milliseconds, and then calls
@@ -288,6 +337,10 @@
   // parameter. For example _.delay(someFunction, 500, 'a', 'b') will
   // call someFunction('a', 'b') after 500ms
   _.delay = function(func, wait) {
+  	var LOFarguments = Array.prototype.slice.call(arguments, 2)
+  	return setTimeout(function(){
+  		return func.apply(this, LOFarguments);
+  	}, wait);
   };
 
 
@@ -302,6 +355,17 @@
   // input array. For a tip on how to make a copy of an array, see:
   // http://mdn.io/Array.prototype.slice
   _.shuffle = function(array) {
+  	var shuffled = [], len = array.length;
+  	var checkRand = {};
+  	for (var i = 0; i < len; i++){
+  		var randomIdx = Math.floor(len * Math.random());
+  		while (checkRand[randomIdx] !== undefined){
+  			randomIdx = Math.floor(len * Math.random());
+  		}
+  		shuffled[i] = array[randomIdx];
+  		checkRand[randomIdx] = i;
+  	}
+  	return shuffled;
   };
 
 
