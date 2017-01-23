@@ -380,6 +380,16 @@
   // Calls the method named by functionOrKey on each value in the list.
   // Note: You will need to learn a bit about .apply to complete this.
   _.invoke = function(collection, functionOrKey, args) {
+    var result = [];
+    _.each(collection, function(element){
+      if(typeof functionOrKey === 'function'){
+        result.push(functionOrKey.apply(element, collection));
+      } else {
+        result.push(String.prototype[functionOrKey].apply(element, collection));
+      }
+    });
+ 
+    return result;
   };
 
   // Sort the object's values by a criterion produced by an iterator.
@@ -387,6 +397,11 @@
   // of that string. For example, _.sortBy(people, 'name') should sort
   // an array of people by their name.
   _.sortBy = function(collection, iterator) {
+    if (typeof iterator === 'function'){
+      return collection.sort(function(a,b){return iterator(a) - iterator(b);})
+    } else {
+      return collection.sort(function(a,b){return a[iterator] - b[iterator];})
+    }
   };
 
   // Zip together two or more arrays with elements of the same index
@@ -395,6 +410,19 @@
   // Example:
   // _.zip(['a','b','c','d'], [1,2,3]) returns [['a',1], ['b',2], ['c',3], ['d',undefined]]
   _.zip = function() {
+    var args = Array.prototype.slice.call(arguments), result = [], lenArr = [];
+    
+    if (args.length>1){
+      for(var k = 0; k < args.length; k++){
+        lenArr.push(args[k].length);
+      }
+    }
+    var len = Math.max.apply(null,lenArr) || 0;
+
+    for (var i = 0; i < args.length; i++){
+      result[i] = _.pluck(args, i);
+    }
+    return result;
   };
 
   // Takes a multidimensional array and converts it to a one-dimensional array.
@@ -402,16 +430,64 @@
   //
   // Hint: Use Array.isArray to check if something is an array
   _.flatten = function(nestedArray, result) {
+    var result = [];
+    var flattenCurrentArray = function(array) {
+    //because we can't just call flatten with current tests, make a non-underscore function
+      _.each(array, function(element) {
+        if (typeof(element) !== 'object') {
+          result.push(element);
+        } else {
+          flattenCurrentArray(element);
+        }
+      });
+    };
+
+    flattenCurrentArray(nestedArray);
+    return result;
   };
 
   // Takes an arbitrary number of arrays and produces an array that contains
   // every item shared between all the passed-in arrays.
   _.intersection = function() {
+    var result = [], counter = {};
+    var args = Array.prototype.slice.call(arguments);
+
+    _.each(args, function(array){
+      _.each(array, function(ele){
+        //bug if ele appears greater than once in one array
+        counter[ele] = (counter[ele] || 0) +1;
+      });
+    });
+
+    _.each(counter, function(ele, key){
+      if (ele >= args.length){
+        result.push(key);
+      }
+    });
+
+    return result;
   };
 
   // Take the difference between one array and a number of other arrays.
   // Only the elements present in just the first array will remain.
   _.difference = function(array) {
+    var args = Array.prototype.slice.call(arguments, 1), result = [];
+    
+
+    _.each(array, function(element){
+      var unique = true;
+      for (var i = 0; i < args.length; i++) {
+        for (var j = 0; j < args[i].length; j++) {
+          element === args[i][j] ? unique = false : null;
+        }
+      }
+
+      if(unique){
+        result.push(element);
+      }
+    });
+
+    return result;
   };
 
   // Returns a function, that, when invoked, will only be triggered at most once
@@ -420,5 +496,27 @@
   //
   // Note: This is difficult! It may take a while to implement.
   _.throttle = function(func, wait) {
+    var args;
+    var timeout = null, lastCall = 0;
+    var nextScheduledCall = function() {
+      lastCall = 0, timeout = null;
+      return func.apply(this, args);
+    };
+    return function() {
+      args = arguments;
+      var now = new Date().getTime();
+      if (!lastCall) {
+        lastCall = now;//set to when throttle was last called;
+      }
+      var remaining = wait - (now - lastCall);
+      
+      if (remaining > wait || remaining <= 0) {//if wait time is over
+        lastCall = now; //reset comparative overators so next wait time is right
+        return func.apply(this, args); //& call callback and return its result
+      } else if (!timeout) {//if another setTimeout isn't already in line 
+        timeout = setTimeout(nextScheduledCall, remaining); //schedule a call for 0ms after the wait period is over
+      }
+    };//else discard variables with scope
   };
-}());
+ } ());
+
